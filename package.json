@@ -1,0 +1,23 @@
+{
+  "name": "data-monitor-proxy-project",
+  "version": "1.0.0",
+  "description": "Twitter API Proxy Server",
+  "type": "module",
+  "main": "main.js",
+  "scripts": {
+    "start": "node main.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.1",
+    "express": "^4.21.2",
+    "twitter-openapi-typescript": "^0.0.53",
+    "twitter-openapi-typescript-generated": "^0.0.37",
+    "x-client-transaction-id-generater": "^0.0.7"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "author": "Data Monitor Team",
+  "license": "MIT"
+}
+
