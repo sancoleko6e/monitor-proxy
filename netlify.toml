@@ -1,0 +1,14 @@
+[build]
+  command = "npm install"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+  # 包含 main.js 以便函数能正确导入
+  included_files = ["main.js", "favicon.ico"]
+
+# 所有请求转发到函数，由 Express 处理路由
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/api"
+  status = 200
