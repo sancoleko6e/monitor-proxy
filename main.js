@@ -242,13 +242,9 @@ app.use((req, res, next) => {
 app.post('/api/twitter/proxy', async (req, res) => {
     const { authToken, ct0Token, headers, flag, apiMethod, endpoint } = req.body || {};
     
-    // 参数验证（附带调试信息帮助排查解析问题）
+    // 参数验证
     if (!authToken || !ct0Token) {
-        return res.status(400).json({ 
-            success: false, 
-            error: '缺少: authToken, ct0Token',
-            debug: { bodyType: typeof req.body, hasBody: !!req.body, keys: req.body ? Object.keys(req.body) : [] }
-        });
+        return res.status(400).json({ success: false, error: '缺少: authToken, ct0Token' });
     }
     if (!headers || !flag) return res.status(400).json({ success: false, error: '缺少: headers, flag' });
     if (!apiMethod && !endpoint) return res.status(400).json({ success: false, error: '需提供 apiMethod 或 endpoint' });
