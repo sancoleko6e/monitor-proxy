@@ -201,22 +201,11 @@ const directRequest = async ({ authToken, ct0Token, method, endpoint, queryParam
 // ============ Express 应用 ============
 const app = express();
 
-// Serverless 兼容：处理 Vercel/Netlify 请求体解析差异
+// 请求体解析：Serverless 环境由入口文件处理，本地运行用 express.json()
 app.use((req, res, next) => {
-    // 情况1: 已经是对象（Vercel 预解析）
     if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
-        return next();
+        return next(); // 已解析，直接使用
     }
-    // 情况2: 是字符串（Netlify 可能传递字符串形式的 JSON）
-    if (req.body && typeof req.body === 'string') {
-        try {
-            req.body = JSON.parse(req.body);
-            return next();
-        } catch (e) {
-            // 解析失败，继续使用 express.json()
-        }
-    }
-    // 情况3: 使用 express.json() 解析
     express.json({ limit: '10mb' })(req, res, next);
 });
 
