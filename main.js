@@ -201,13 +201,22 @@ const directRequest = async ({ authToken, ct0Token, method, endpoint, queryParam
 // ============ Express 应用 ============
 const app = express();
 
-// Vercel Serverless 兼容：处理请求体预解析问题
+// Serverless 兼容：处理 Vercel/Netlify 请求体解析差异
 app.use((req, res, next) => {
-    // 如果 Vercel 已经预解析了请求体（req.body 是对象），直接使用
+    // 情况1: 已经是对象（Vercel 预解析）
     if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
         return next();
     }
-    // 否则使用 express.json() 解析
+    // 情况2: 是字符串（Netlify 可能传递字符串形式的 JSON）
+    if (req.body && typeof req.body === 'string') {
+        try {
+            req.body = JSON.parse(req.body);
+            return next();
+        } catch (e) {
+            // 解析失败，继续使用 express.json()
+        }
+    }
+    // 情况3: 使用 express.json() 解析
     express.json({ limit: '10mb' })(req, res, next);
 });
 
@@ -244,8 +253,14 @@ app.use((req, res, next) => {
 app.post('/api/twitter/proxy', async (req, res) => {
     const { authToken, ct0Token, headers, flag, apiMethod, endpoint } = req.body || {};
     
-    // 参数验证
-    if (!authToken || !ct0Token) return res.status(400).json({ success: false, error: '缺少: authToken, ct0Token' });
+    // 参数验证（附带调试信息帮助排查解析问题）
+    if (!authToken || !ct0Token) {
+        return res.status(400).json({ 
+            success: false, 
+            error: '缺少: authToken, ct0Token',
+            debug: { bodyType: typeof req.body, hasBody: !!req.body, keys: req.body ? Object.keys(req.body) : [] }
+        });
+    }
     if (!headers || !flag) return res.status(400).json({ success: false, error: '缺少: headers, flag' });
     if (!apiMethod && !endpoint) return res.status(400).json({ success: false, error: '需提供 apiMethod 或 endpoint' });
     
