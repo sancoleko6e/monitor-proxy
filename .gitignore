@@ -159,3 +159,8 @@ build/
 # Log files
 logs/
 *.log
+
+# Local Netlify folder
+.netlify
+package-lock.json
+deno.lock

@@ -7,6 +7,11 @@
   # 包含 main.js 以便函数能正确导入
   included_files = ["main.js", "favicon.ico"]
 
+# 本地开发配置
+[dev]
+  autoLaunch = false  # 禁止自动打开浏览器
+  framework = "#static"  # 静态模式，避免框架检测
+
 # 所有请求转发到函数，由 Express 处理路由
 [[redirects]]
   from = "/*"

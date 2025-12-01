@@ -201,11 +201,18 @@ const directRequest = async ({ authToken, ct0Token, method, endpoint, queryParam
 // ============ Express 应用 ============
 const app = express();
 
-// 请求体解析：Serverless 环境由入口文件处理，本地运行用 express.json()
+// 请求体解析：先修正 serverless-http 的 Buffer 问题，再用标准解析
 app.use((req, res, next) => {
-    if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
-        return next(); // 已解析，直接使用
+    // serverless-http 可能把 JSON 字符串解析成 Buffer，需要手动修正
+    if (Buffer.isBuffer(req.body)) {
+        try {
+            req.body = JSON.parse(req.body.toString());
+            return next();
+        } catch (e) {
+            return res.status(400).json({ success: false, error: 'Invalid JSON' });
+        }
     }
+    // 其他情况用标准 JSON 解析
     express.json({ limit: '10mb' })(req, res, next);
 });
 
