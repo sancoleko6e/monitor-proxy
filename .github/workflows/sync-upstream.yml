@@ -1,8 +1,8 @@
 name: Sync Upstream
 
 on:
-  schedule:
-    - cron: '0 */6 * * *'
+#  schedule:
+#    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 jobs:
@@ -36,4 +36,5 @@ jobs:
           git merge upstream/master --no-edit -m "Sync from upstream"
 
           git push origin master
+
 
