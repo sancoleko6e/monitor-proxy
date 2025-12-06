@@ -21,9 +21,12 @@ const API_METHODS = {
     getUserByScreenName: (c, p) => c.getUserApi().getUserByScreenName(p),
     getHomeLatestTimeline: (c, p) => c.getTweetApi().getHomeLatestTimeline(p),
     getUserTweets: (c, p) => c.getTweetApi().getUserTweets(p),
+    getTweetDetail: (c, p) => c.getTweetApi().getTweetDetail(p),        // 删推监控：获取推文详情
     getFollowing: (c, p) => c.getUserListApi().getFollowing(p),
     postCreateFriendships: (c, p) => c.getV11PostApi().postCreateFriendships(p),
     postDestroyFriendships: (c, p) => c.getV11PostApi().postDestroyFriendships(p),
+    postCreateRetweet: (c, p) => c.getPostApi().postCreateRetweet(p),   // 删推监控：转发推文
+    postDeleteRetweet: (c, p) => c.getPostApi().postDeleteRetweet(p),   // 删推监控：取消转发
 };
 
 /**
