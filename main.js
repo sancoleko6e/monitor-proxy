@@ -7,7 +7,30 @@ import express from 'express';
 import { TwitterOpenApi, TwitterOpenApiClient } from 'twitter-openapi-typescript';
 import { Configuration } from 'twitter-openapi-typescript-generated';
 import { generateTransactionId } from 'x-client-transaction-id-generater';
+import { fetch as undiciFetch, Agent } from 'undici';
 import 'dotenv/config';
+
+// 创建带有连接复用和超时配置的 undici Agent
+const undiciAgent = new Agent({
+    keepAliveTimeout: 30000,      // 连接保活超时 30 秒
+    keepAliveMaxTimeout: 60000,   // 最大保活超时 60 秒
+    connections: 10,              // 每个 origin 最多 10 个连接
+    pipelining: 1,                // 管道化请求
+    connect: {
+        timeout: 10000            // 连接超时 10 秒
+    }
+});
+
+// 创建带有 Agent 配置的自定义 fetch
+const customFetch = (url, options = {}) => {
+    return undiciFetch(url, {
+        ...options,
+        dispatcher: undiciAgent
+    });
+};
+
+// 使用自定义 fetch 替换 TwitterOpenApi 的 fetchApi
+TwitterOpenApi.fetchApi = customFetch;
 
 const API_TOKEN = process.env.API_TOKEN || '';
 // 注意: Serverless 环境下不能 process.exit，改为在请求时检查
@@ -52,6 +75,16 @@ const parseError = (error) => {
     const status = error.response?.status || parseInt(error.message.match(/HTTP (\d+)/)?.[1]) || 500;
     let message = error.message || 'API调用失败';
     let body = null;
+    
+    // 添加 cause 信息（用于调试 fetch 底层错误）
+    if (error.cause) {
+        const causeMsg = error.cause instanceof Error 
+            ? error.cause.message 
+            : (error.cause?.message || String(error.cause));
+        if (causeMsg && !message.includes(causeMsg)) {
+            message = `${message} (原因: ${causeMsg})`;
+        }
+    }
     
     if (error.response?.body) {
         try {
@@ -271,10 +304,14 @@ app.post('/api/twitter/proxy', async (req, res) => {
         }
         res.json({ success: true, data: result });
     } catch (error) {
-        // 统一错误处理
+        // 统一错误处理，包含 apiMethod/endpoint 便于调试
         const { status, message, body } = parseError(error);
+        const method = apiMethod || endpoint || 'unknown';
         res.status(status >= 400 && status < 600 ? status : 500).json({
-            success: false, error: message, statusCode: status,
+            success: false, 
+            error: `[${method}] ${message}`, 
+            statusCode: status,
+            apiMethod: method,
             details: { message: error.message, ...(error.response && { status: error.response.status, body: body || error.response.body }) }
         });
     }
