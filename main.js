@@ -42,6 +42,7 @@ const API_TOKEN = process.env.API_TOKEN || '';
  */
 const API_METHODS = {
     getUserByScreenName: (c, p) => c.getUserApi().getUserByScreenName(p),
+    getUserByRestId: (c, p) => c.getUserApi().getUserByRestId(p),
     getHomeLatestTimeline: (c, p) => c.getTweetApi().getHomeLatestTimeline(p),
     getUserTweets: (c, p) => c.getTweetApi().getUserTweets(p),
     getTweetDetail: (c, p) => c.getTweetApi().getTweetDetail(p),        // 删推监控：获取推文详情
