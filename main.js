@@ -189,6 +189,11 @@ const invokeMethod = async (client, method, params) => {
  * 执行原始 Twitter API 请求
  * @param {object} params - 请求参数
  * @returns {Promise<any>}
+ * 
+ * 重要：Twitter API 域名说明
+ * - GraphQL API (/i/api/graphql/..., /i/api/1.1/...) 必须使用 https://x.com
+ * - REST API (/1.1/..., /2/...) 使用 https://api.x.com
+ * 使用错误的域名会导致 HTTP 404 错误
  */
 const directRequest = async ({ authToken, ct0Token, method, endpoint, queryParams, body, extraHeaders, headers, pairData }) => {
     if (!ct0Token) throw new Error('CT0令牌缺失');
@@ -201,8 +206,9 @@ const directRequest = async ({ authToken, ct0Token, method, endpoint, queryParam
         cookie: `auth_token=${authToken}; ct0=${ct0Token};`,
     };
     
-    // 构建 URL
-    let url = `https://api.x.com${endpoint}`;
+    // 构建 URL - GraphQL API使用x.com，REST API使用api.x.com
+    const baseUrl = endpoint.startsWith('/i/api/') ? 'https://x.com' : 'https://api.x.com';
+    let url = `${baseUrl}${endpoint}`;
     if (queryParams) {
         const params = new URLSearchParams();
         Object.entries(queryParams).forEach(([k, v]) => v != null && params.append(k, String(v)));
