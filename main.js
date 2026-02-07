@@ -126,8 +126,24 @@ const createClient = async (authToken, ct0Token, headers, flag, pairData) => {
     const cookies = { auth_token: authToken, ...(ct0Token && { ct0: ct0Token }) };
     const apiKey = { ...headers.api, ...(ct0Token && { 'x-twitter-auth-type': 'OAuth2Session', 'x-csrf-token': ct0Token }) };
     
+    // 包装 fetchApi，捕获原始 HTTP 响应信息（用于诊断包内部解析错误）
+    const responseCapture = { status: null, statusText: null, url: null, _clonedResponse: null };
+    const originalFetchApi = TwitterOpenApi.fetchApi;
+    const wrappedFetchApi = async (...args) => {
+        const response = await originalFetchApi(...args);
+        try {
+            const cloned = response.clone();
+            const url = typeof args[0] === 'string' ? args[0] : (args[0]?.url || '');
+            responseCapture.status = response.status;
+            responseCapture.statusText = response.statusText;
+            responseCapture.url = url.length > 200 ? url.substring(0, 200) + '...' : url;
+            responseCapture._clonedResponse = cloned;
+        } catch (e) { /* 忽略捕获失败 */ }
+        return response;
+    };
+
     const config = {
-        fetchApi: TwitterOpenApi.fetchApi,
+        fetchApi: wrappedFetchApi,
         middleware: [{
             // 设置 Cookie 到请求上下文
             pre: async (ctx) => {
@@ -145,7 +161,9 @@ const createClient = async (authToken, ct0Token, headers, flag, pairData) => {
         return init;
     };
     
-    return new TwitterOpenApiClient(new Configuration(config), flag, initOverrides);
+    const client = new TwitterOpenApiClient(new Configuration(config), flag, initOverrides);
+    client._responseCapture = responseCapture;
+    return client;
 };
 
 /**
@@ -162,6 +180,37 @@ const invokeMethod = async (client, method, params) => {
     try {
         return await fn(client, params);
     } catch (error) {
+        // 检查是否为包内部解析错误（如 Cannot read properties of undefined）
+        const errorMsg = error?.message || '';
+        if (errorMsg.includes('Cannot read properties of undefined') ||
+            errorMsg.includes('Denied by access control')) {
+            // 从 client._responseCapture 获取原始 HTTP 响应信息
+            let rawStatusCode = null;
+            let rawBodyPreview = null;
+            let rawResponseDiag = '';
+            const capture = client?._responseCapture;
+            if (capture && capture.status !== null) {
+                rawStatusCode = capture.status;
+                rawResponseDiag = ` [HTTP ${rawStatusCode} ${capture.statusText || ''}]`;
+                try {
+                    if (capture._clonedResponse) {
+                        const bodyText = await capture._clonedResponse.text();
+                        rawBodyPreview = bodyText.substring(0, 500);
+                        rawResponseDiag += ` body: ${rawBodyPreview.substring(0, 200)}`;
+                        capture._clonedResponse = null;
+                    }
+                } catch (e) { /* 忽略读取失败 */ }
+            }
+
+            const enhanced = new Error(`API响应异常，数据解析失败${rawResponseDiag}[${errorMsg}]`);
+            enhanced.response = {
+                status: rawStatusCode || 500,
+                statusText: 'API Response Parse Error',
+                body: rawBodyPreview
+            };
+            throw enhanced;
+        }
+
         if (!error.response) throw error;
         
         const { status, statusText, url } = error.response;
