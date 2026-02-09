@@ -202,6 +202,18 @@ const invokeMethod = async (client, method, params) => {
                 } catch (e) { /* 忽略读取失败 */ }
             }
 
+            // HTTP 200 + 响应体无错误标识 = 空数据响应（如空时间线），非账号异常
+            if (rawStatusCode === 200 && rawBodyPreview) {
+                const hasErrorIndicator = rawBodyPreview.includes('"errors"') ||
+                                          rawBodyPreview.includes('"code"') ||
+                                          rawBodyPreview.includes('suspended') ||
+                                          rawBodyPreview.includes('locked');
+                if (!hasErrorIndicator) {
+                    // 返回null表示空数据，主项目会正常处理
+                    return null;
+                }
+            }
+
             const enhanced = new Error(`API响应异常，数据解析失败${rawResponseDiag}[${errorMsg}]`);
             enhanced.response = {
                 status: rawStatusCode || 500,
