@@ -73,9 +73,14 @@ const readResponseBody = async (response) => {
  * @returns {{ status: number, message: string, body: object|null }}
  */
 const parseError = (error) => {
-    const status = error.response?.status || parseInt(error.message.match(/HTTP (\d+)/)?.[1]) || 500;
+    let status = error.response?.status || parseInt(error.message.match(/HTTP (\d+)/)?.[1]) || 500;
     let message = error.message || 'API调用失败';
     let body = null;
+
+    // "No data" 来自 twitter-openapi 包，表示用户/资源不存在，应返回 404 而非 500
+    if (message === 'No data' || message.toLowerCase() === 'no data') {
+        status = 404;
+    }
     
     // 添加 cause 信息（用于调试 fetch 底层错误）
     if (error.cause) {
