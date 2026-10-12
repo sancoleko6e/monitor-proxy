@@ -153,6 +153,11 @@ const createClient = async (authToken, ct0Token, headers, flag, pairData) => {
             // 设置 Cookie 到请求上下文
             pre: async (ctx) => {
                 ctx.init.headers = { ...ctx.init.headers, cookie: Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ') };
+                // SDK 的 GraphQL POST 不调用 initOverrides，在公共中间件补齐签名。
+                if (ctx.init.method === 'POST' && new URL(ctx.url).pathname.includes('/graphql/') && !ctx.init.headers['x-client-transaction-id']) {
+                    const txId = await genTxId(ctx.init.method || 'GET', new URL(ctx.url).pathname, pairData);
+                    if (txId) ctx.init.headers['x-client-transaction-id'] = txId;
+                }
             }
         }],
         apiKey: (key) => apiKey[key.toLowerCase()],
@@ -160,13 +165,22 @@ const createClient = async (authToken, ct0Token, headers, flag, pairData) => {
     };
     
     // 使用 pairData 生成 transaction ID
-    const initOverrides = async ({ context, init }) => {
+    const initOverrides = () => async ({ context, init }) => {
         const txId = await genTxId(context.method, `/i/api${context.path}`, pairData);
         if (txId) init.headers = { ...init.headers, 'x-client-transaction-id': txId };
         return init;
     };
     
-    const client = new TwitterOpenApiClient(new Configuration(config), flag, initOverrides);
+    const sdkFlag = { ...flag };
+    // SDK 0.0.56 使用 timeline，兼容缓存中旧的 timeline_v2 请求参数。
+    if (flag?.UserTweets?.variables?.withV2Timeline) {
+        sdkFlag.UserTweets = {
+            ...flag.UserTweets,
+            variables: { ...flag.UserTweets.variables, withV2Timeline: false }
+        };
+    }
+
+    const client = new TwitterOpenApiClient(new Configuration(config), sdkFlag, initOverrides);
     client._responseCapture = responseCapture;
     return client;
 };

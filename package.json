@@ -14,8 +14,8 @@
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "serverless-http": "^3.2.0",
-    "twitter-openapi-typescript": "^0.0.53",
-    "twitter-openapi-typescript-generated": "^0.0.37",
+    "twitter-openapi-typescript": "^0.0.56",
+    "twitter-openapi-typescript-generated": "^0.0.40",
     "undici": "^7.0.0",
     "x-client-transaction-id-generater": "^0.0.7"
   },
